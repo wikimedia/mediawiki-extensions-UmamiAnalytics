@@ -4,15 +4,22 @@ declare( strict_types = 1 );
 
 namespace MediaWiki\Extension\UmamiAnalytics;
 
-use MediaWiki\Hook\BeforePageDisplayHook;
-use MediaWiki\MediaWikiServices;
-use OutputPage;
-use Skin;
+use MediaWiki\Output\Hook\BeforePageDisplayHook;
+use MediaWiki\Output\OutputPage;
+use MediaWiki\Page\PageProps;
+use MediaWiki\Skin\Skin;
+use MediaWiki\Title\Title;
 
 /**
  * Hooks for the UmamiAnalytics extension.
  */
 final class Hooks implements BeforePageDisplayHook {
+
+    private PageProps $pageProps;
+
+    public function __construct( PageProps $pageProps ) {
+        $this->pageProps = $pageProps;
+    }
 
     /**
      * Loads the Umami tracker on eligible MediaWiki page views.
@@ -24,10 +31,7 @@ final class Hooks implements BeforePageDisplayHook {
      * @param OutputPage $out
      * @param Skin $skin
      */
-    public function onBeforePageDisplay(
-        $out,
-        $skin
-    ): void {
+    public function onBeforePageDisplay( $out, $skin ): void {
         $config = $out->getConfig();
 
         $scriptUrl = $config->get(
@@ -201,20 +205,17 @@ final class Hooks implements BeforePageDisplayHook {
      * formatting. Umami must receive a readable text label rather
      * than HTML markup.
      *
-     * @param \Title $title
+     * @param Title $title
      * @return string
      */
-    private function getDisplayTitle( $title ): string {
+    private function getDisplayTitle( Title $title ): string {
         $displayTitle = '';
 
         /*
          * DISPLAYTITLE is stored in the page_props table as the
          * "displaytitle" page property.
          */
-        $pageProps = MediaWikiServices::getInstance()
-            ->getPageProps();
-
-        $properties = $pageProps->getProperties(
+        $properties = $this->pageProps->getProperties(
             $title,
             'displaytitle'
         );

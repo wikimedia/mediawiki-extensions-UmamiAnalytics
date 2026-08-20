@@ -14,16 +14,21 @@
     "AutoloadNamespaces": {
         "MediaWiki\\Extension\\UmamiAnalytics\\": "includes/"
     },
+    "HookHandlers": {
+        "main": {
+            "class": "MediaWiki\\Extension\\UmamiAnalytics\\Hooks",
+            "services": [
+                "PageProps"
+            ]
+        }
+    },
     "Hooks": {
-        "BeforePageDisplay": "MediaWiki\\Extension\\UmamiAnalytics\\Hooks"
+        "BeforePageDisplay": "main"
     },
     "ResourceModules": {
         "ext.umamiAnalytics": {
             "scripts": [
                 "ext.umamiAnalytics.js"
-            ],
-            "dependencies": [
-                "mediawiki"
             ],
             "localBasePath": "resources",
             "remoteExtPath": "UmamiAnalytics/resources"
