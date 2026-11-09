@@ -8,6 +8,7 @@
 #   MAP_SOURCE_EMAIL                    your e-mail on the source side
 #   MAP_ADD_CHANGE_ID                   "1" when copying to Gerrit
 #   MAP_ONTO                            SHA the commits are replayed onto
+#   MAP_LOG                             file collecting what was changed
 #
 # Amends HEAD when:
 #   - MAP_ADD_CHANGE_ID=1 and there is no Change-Id. The Change-Id is derived
@@ -22,7 +23,7 @@
 set -euo pipefail
 shopt -s nocasematch
 
-: "${MAP_TARGET_NAME:?}" "${MAP_TARGET_EMAIL:?}" "${MAP_SOURCE_EMAIL:?}" "${MAP_ONTO:?}"
+: "${MAP_TARGET_NAME:?}" "${MAP_TARGET_EMAIL:?}" "${MAP_SOURCE_EMAIL:?}" "${MAP_ONTO:?}" "${MAP_LOG:?}"
 
 # When the rebase drops a commit (patch already on the target side), the exec
 # that follows runs on the previous commit, which may belong to the target
@@ -44,13 +45,13 @@ if [ "${MAP_ADD_CHANGE_ID:-0}" = "1" ] \
 	seed="$(git log -1 --format='%an%n%ae%n%at%n%s' HEAD)"
 	change_id="I$(printf '%s' "$seed" | git hash-object --stdin)"
 	git interpret-trailers --in-place --trailer "Change-Id: ${change_id}" "$msg_file"
-	echo "  + Change-Id ${change_id} added: ${subject}"
+	echo "  + Change-Id ${change_id} added: ${subject}" >> "$MAP_LOG"
 	needs_amend=1
 fi
 
 if [[ "$(git log -1 --format=%ae HEAD)" == "$MAP_SOURCE_EMAIL" ]]; then
 	author_args=(--author="${MAP_TARGET_NAME} <${MAP_TARGET_EMAIL}>" --date="$(git log -1 --format=%aD HEAD)")
-	echo "  + author identity mapped: ${subject}"
+	echo "  + author identity mapped: ${subject}" >> "$MAP_LOG"
 	needs_amend=1
 fi
 

@@ -115,18 +115,24 @@ gerrit_ssh() {
 # whose patch is not already there) onto <onto>, mapping identities.
 # Commits that become empty are dropped; merge commits are flattened.
 rebase_mapped() {
-	local direction="$1" onto upstream="$3" name email source cid
+	local direction="$1" onto upstream="$3" name email source cid map_log rc=0
 	onto="$(git rev-parse "$2^{commit}")"
 	if [ "$direction" = to-gerrit ]; then
 		name="$GERRIT_NAME"; email="$GERRIT_EMAIL"; source="$GITLAB_EMAIL"; cid=1
 	else
 		name="$GITLAB_NAME"; email="$GITLAB_EMAIL"; source="$GERRIT_EMAIL"; cid=0
 	fi
+	map_log="$(mktemp)"
+	# git's own progress output is silenced; map-commit.sh reports via MAP_LOG.
 	GIT_COMMITTER_NAME="$name" GIT_COMMITTER_EMAIL="$email" \
-	MAP_TARGET_NAME="$name" MAP_TARGET_EMAIL="$email" MAP_SOURCE_EMAIL="$source" MAP_ADD_CHANGE_ID="$cid" MAP_ONTO="$onto" \
+	MAP_TARGET_NAME="$name" MAP_TARGET_EMAIL="$email" MAP_SOURCE_EMAIL="$source" MAP_ADD_CHANGE_ID="$cid" \
+	MAP_ONTO="$onto" MAP_LOG="$map_log" \
 	GIT_SEQUENCE_EDITOR=: GIT_EDITOR=: \
 		git rebase --quiet --interactive --empty=drop \
-		--exec "bash '${SCRIPT_DIR}/map-commit.sh'" --onto "$onto" "$upstream" > /dev/null
+		--exec "bash '${SCRIPT_DIR}/map-commit.sh'" --onto "$onto" "$upstream" > /dev/null || rc=$?
+	cat "$map_log"
+	rm -f "$map_log"
+	return "$rc"
 }
 
 # sync_point <gerrit-ref> <gitlab-ref>

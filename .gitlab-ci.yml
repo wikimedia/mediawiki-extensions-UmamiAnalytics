@@ -24,6 +24,9 @@ variables:
   # "true": vote Code-Review +2 and submit right after upload.
   # Set to "false" (CI/CD variable or "Run pipeline" form) to review in Gerrit.
   GERRIT_AUTO_SUBMIT: "true"
+  # Verified vote given along with Code-Review +2 (required on this repository,
+  # which is not tested by Zuul). Set to "" if jenkins-bot ever votes Verified.
+  GERRIT_VERIFIED_VOTE: "+2"
   # Seconds/attempts to wait for a change to become submittable
   # (e.g. if a Verified vote from CI is ever required).
   GERRIT_SUBMIT_ATTEMPTS: "10"

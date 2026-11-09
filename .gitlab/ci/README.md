@@ -17,7 +17,7 @@ differ only in identities and commit IDs (SHA):
 
 Commits are copied between the two sides, and identities are swapped on the way:
 
-- **GitLab → Gerrit (`gerrit:push`):** runs on every push to `main` or `REL1_*`. It uploads the new commits with `git review`, one Gerrit change per commit. If `GERRIT_AUTO_SUBMIT=true`, it then votes Code-Review +2 and submits them.
+- **GitLab → Gerrit (`gerrit:push`):** runs on every push to `main` or `REL1_*`. It uploads the new commits with `git review`, one Gerrit change per commit. If `GERRIT_AUTO_SUBMIT=true`, it then votes Code-Review +2 and Verified +2 and submits them. This repository is not tested by Zuul, so Verified has to be voted by hand; if jenkins-bot ever votes Verified, set `GERRIT_VERIFIED_VOTE` to an empty value.
 - **Gerrit → GitLab (`gerrit:sync`):** runs from a pipeline schedule, or manually. It copies commits made directly in Gerrit (LibUp, translation bots, admins, release branches) on top of the GitLab branches.
 
 **GitLab branches only ever move forward:** the pipeline never force-pushes. Clones never break, and a plain `git pull` is always enough. Your Gerrit e-mail never appears on GitLab: not in commits, and not in job logs.
@@ -102,7 +102,7 @@ Protected variables are only available on protected branches.
 | `GERRIT_KNOWN_HOSTS` | **File** | Contents of `gerrit_known_hosts` | no |
 | `GITLAB_PUSH_TOKEN` | Variable | The project access token | **yes** |
 | `GERRIT_NAME` | Variable | Your display name, e.g. `Linedwell` | no |
-| `GERRIT_EMAIL` | Variable | Your Gerrit-registered e-mail | **yes**, if GitLab accepts it |
+| `GERRIT_EMAIL` | Variable | Your Gerrit-registered e-mail, **with the exact same case** as in Gerrit settings | **yes**, if GitLab accepts it |
 | `GITLAB_EMAIL` | Variable | Your GitLab commit e-mail, e.g. `12345678-Linedwell@users.noreply.gitlab.com` (*Preferences → Profile → Commit email*) | no |
 
 Optional: `GITLAB_NAME` is the display name used on GitLab. It defaults to `GERRIT_NAME`.
@@ -121,7 +121,7 @@ This runs `gerrit:sync`.
 
 1. Do steps 1 to 4, then add the CI/CD variable `GERRIT_AUTO_SUBMIT` = `false` for this first run only.
 2. Add the pipeline files to `main`, in the Web IDE or from a clone. Commit directly to `main`.
-3. `gerrit:push` runs. It finds the last state shared with Gerrit and uploads **only** the new commit (the pipeline files). Check in Gerrit that this single change is there, then +2 and Submit it.
+3. `gerrit:push` runs. It finds the last state shared with Gerrit and uploads **only** the new commit (the pipeline files). Check in Gerrit that this single change is there and that only *Owner* is shown (no separate Author/Committer). Then vote Code-Review +2 and Verified +2, and Submit it.
 4. Delete the `GERRIT_AUTO_SUBMIT` variable, so the default `true` from `.gitlab-ci.yml` applies again.
 5. Open the pipeline and click the manual job `gerrit:sync`. It:
    - copies the Gerrit-only commits to GitLab `main` (e.g. the admin's `Add .gitreview`);
@@ -159,6 +159,7 @@ To fix it:
 | `Permission denied (publickey)` | Public key not in Gerrit settings, or the File variable is missing its final newline. |
 | `Host key verification failed` | `GERRIT_KNOWN_HOSTS` is wrong or outdated: redo step 2. |
 | `invalid committer` / `does not match your user account` | `GERRIT_EMAIL` is not registered in Gerrit (step 3). |
+| Gerrit shows separate *Author*/*Committer* lines | `GERRIT_EMAIL` differs from the address of your Gerrit account, even only by case. Copy it exactly from Gerrit settings. |
 | `invalid author` | A commit author other than you is not accepted by Gerrit (*Forge Author* permission, normally granted to all registered users). Ask a Gerrit admin. |
 | `do not apply cleanly` / sync warning (exit 3) | Conflict: see `gerrit:align` above. |
 | `no content in common` | The GitLab branch shares no file state with Gerrit. Create the GitLab branch from scratch with `gerrit:sync` (delete it first), or run `gerrit:align`. |

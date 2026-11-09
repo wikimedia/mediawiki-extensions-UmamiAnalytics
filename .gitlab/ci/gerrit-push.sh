@@ -6,8 +6,8 @@
 #     identities and adding missing Change-Ids (map-commit.sh). Commits whose
 #     changes are already in Gerrit become empty and are dropped.
 #  2. Upload them with `git review` (one Gerrit change per commit).
-#  3. If GERRIT_AUTO_SUBMIT=true: vote Code-Review +2 and submit each change,
-#     oldest first.
+#  3. If GERRIT_AUTO_SUBMIT=true: vote Code-Review +2 (and Verified, see
+#     GERRIT_VERIFIED_VOTE) and submit each change, oldest first.
 #  4. Copy commits that exist only in Gerrit back to GitLab (see sync_branch).
 # The GitLab branch itself is never rewritten.
 
@@ -75,11 +75,18 @@ else
 
 	attempts="${GERRIT_SUBMIT_ATTEMPTS:-10}"
 	interval="${GERRIT_SUBMIT_INTERVAL:-30}"
+	votes=(--label "Code-Review=+2"); vote_names="Code-Review +2"
+	# This repository is not tested by Zuul: Verified must be voted by hand.
+	# Set GERRIT_VERIFIED_VOTE to "" if jenkins-bot ever votes Verified.
+	if [ -n "${GERRIT_VERIFIED_VOTE:-}" ]; then
+		votes+=(--label "Verified=${GERRIT_VERIFIED_VOTE}")
+		vote_names+=", Verified ${GERRIT_VERIFIED_VOTE}"
+	fi
 	for sha in "${commits[@]}"; do
-		log "Code-Review +2 and submit ${sha:0:9} $(git log -1 --format=%s "$sha")"
-		gerrit_ssh gerrit review --project "$GERRIT_PROJECT" --branch "$target" \
-			--code-review +2 --message "'Auto-approved by GitLab CI: ${CI_PIPELINE_URL:-manual run}'" "$sha" \
-			|| die "Could not vote +2 on ${sha:0:9}."
+		log "${vote_names} and submit ${sha:0:9} $(git log -1 --format=%s "$sha")"
+		gerrit_ssh gerrit review --project "$GERRIT_PROJECT" --branch "$target" "${votes[@]}" \
+			--message "'Auto-approved by GitLab CI: ${CI_PIPELINE_URL:-manual run}'" "$sha" \
+			|| die "Could not vote on ${sha:0:9}."
 		for ((i = 1; ; i++)); do
 			if out="$(gerrit_ssh gerrit review --project "$GERRIT_PROJECT" --branch "$target" --submit "$sha" 2>&1)"; then
 				break
