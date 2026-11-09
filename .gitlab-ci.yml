@@ -44,23 +44,27 @@ stages:
   variables:
     GIT_STRATEGY: clone
     GIT_DEPTH: "0"          # Full history is required for rebase/cherry checks.
+    # The jobs check out Gerrit branches that may not contain .gitlab/ci
+    # (e.g. release branches): the scripts always run from this copy.
+    GERRIT_CI_DIR: /tmp/gerrit-ci
   resource_group: gerrit    # Never run two Gerrit jobs at the same time.
   interruptible: false
   before_script:
     - apk add --no-cache bash git openssh-client >/dev/null
     - pip install --quiet --disable-pip-version-check --root-user-action=ignore "git-review>=2.4,<3"
+    - rm -rf "$GERRIT_CI_DIR" && cp -r .gitlab/ci "$GERRIT_CI_DIR"
 
 gerrit:push:
   extends: .gerrit-base
   script:
-    - bash .gitlab/ci/gerrit-push.sh
+    - bash "$GERRIT_CI_DIR/gerrit-push.sh"
   rules:
     - if: '($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web") && ($CI_COMMIT_BRANCH == $GITLAB_MAIN_BRANCH || $CI_COMMIT_BRANCH =~ /^REL1_[0-9]+$/)'
 
 gerrit:sync:
   extends: .gerrit-base
   script:
-    - bash .gitlab/ci/gerrit-sync.sh
+    - bash "$GERRIT_CI_DIR/gerrit-sync.sh"
   # Exit code 3 = some branch needs attention: shown as a warning, not a failure.
   # (exit_codes is only allowed at job level, not inside rules.)
   allow_failure:
@@ -77,7 +81,7 @@ gerrit:sync:
 gerrit:align:
   extends: .gerrit-base
   script:
-    - bash .gitlab/ci/gerrit-align.sh
+    - bash "$GERRIT_CI_DIR/gerrit-align.sh"
   rules:
     - if: '$CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_BRANCH == $GITLAB_MAIN_BRANCH'
       when: manual
